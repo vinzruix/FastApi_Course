@@ -1,0 +1,14 @@
+from typing import List
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.core.db import Base
+from .post import PostORM
+from .post import post_tags
+
+
+class TagORM(Base):
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    posts: Mapped[List["PostORM"]] = relationship(secondary=post_tags, back_populates="tags", lazy="selectin")
