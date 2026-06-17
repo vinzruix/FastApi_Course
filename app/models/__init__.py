@@ -1,7 +1,8 @@
 from .author import AuthorORM
 from .tag import TagORM
 from .post import PostORM, post_tags
+from .user import UserORM
 
 # Aca esl  oque se meustra que se puede importar
 
-__all__ = ["AuthorORM","PostORM","post_tags","TagORM"]
+__all__ = ["AuthorORM","PostORM","post_tags","TagORM","UserORM"]

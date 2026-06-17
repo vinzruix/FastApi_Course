@@ -1,5 +1,6 @@
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Annotated
 
+from fastapi import Form
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 
 
@@ -26,6 +27,7 @@ class Author(BaseModel):
 class PostBase(BaseModel):
     title: str
     content: str
+    image_url: Optional[str] = None
     tags: Optional[List[Tag]] = Field(default_factory=list)  # Crea una lista por cada objeto que se cree en el programa
     author: Optional[Author] = None
 
@@ -48,7 +50,8 @@ class PostCreate(BaseModel):
     )
 
     tags: Optional[List[Tag]] = Field(default_factory=list)
-    #author: Author
+
+    # author: Author
 
     @field_validator("title")
     @classmethod
@@ -56,6 +59,16 @@ class PostCreate(BaseModel):
         if "puto" in value.lower():
             raise ValueError("El titulo no puede contener la palabra 'puto' ")
         return value
+
+    @classmethod
+    def as_form(cls,
+                title: Annotated[str, Form(min_length=3)],
+                content: Annotated[str, Form(min_length=10)],
+                tags : Annotated[Optional[List[str]], Form()] = None
+                ):
+
+        tag_obj = [Tag(name=tag) for tag in (tags or [])]
+        return cls(title=title,tags=tag_obj,content=content)
 
 
 class PostPublic(PostBase):

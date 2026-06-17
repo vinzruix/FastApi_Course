@@ -66,7 +66,10 @@ class PostRepository:
         return author_obj
 
     def ensure_tag(self, name: str) -> TagORM:
-        tag_obj = self.db.execute(select(TagORM).where(TagORM.name.ilike(f"%{name}%"))).scalar_one_or_none()
+
+        normalize = name.strip().lower()
+
+        tag_obj = self.db.execute(select(TagORM).where(func.lower(TagORM.name) == normalize)).scalar_one_or_none()
 
         if not tag_obj:
             tag_obj = TagORM(name=name)
@@ -75,16 +78,24 @@ class PostRepository:
 
         return tag_obj
 
-    def create_post(self, title: str, content: str, author: Optional[dict], tags: List[dict]) -> PostORM:
+    def create_post(self, title: str, content: str, author: Optional[dict], tags: List[dict],
+                    image_url: str) -> PostORM:
         author_obj = None
 
         if author:
             author_obj = self.ensure_author(author["username"], author["email"])
 
-        post = PostORM(title=title, content=content, author=author_obj)
+        post = PostORM(title=title, content=content, author=author_obj, image_url=image_url)
 
-        for tag in tags:
-            tag_obj = self.ensure_tag(tag["name"])
+        names = tags[0]["name"].split(",")
+
+        for name in names:
+            name = name.strip().lower()
+
+            if not name:
+                continue
+
+            tag_obj = self.ensure_tag(name)
             post.tags.append(tag_obj)
 
         self.db.add(post)
@@ -92,7 +103,7 @@ class PostRepository:
         self.db.refresh(post)
         return post
 
-    def update_post(self, post : PostORM, updates : dict) -> PostORM:
+    def update_post(self, post: PostORM, updates: dict) -> PostORM:
 
         for key, value in updates.items():
             setattr(post, key, value)  # de un objeto busca un llave y le aplica un valor
@@ -101,8 +112,5 @@ class PostRepository:
 
         return post
 
-
-
-    def delete_post(self, post : PostORM) -> None:
+    def delete_post(self, post: PostORM) -> None:
         self.db.delete(post)
-

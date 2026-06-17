@@ -1,23 +1,41 @@
 import math
-from typing import Optional, Literal, List, Union
+from typing import Optional, Literal, List, Union, Annotated
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette import status
+
 from app.core.db import get_db
+from app.services.file_storage import save_image
 from .schemas import PostPublic, PaginatedPost, PostCreate, PostUpdate, PostSummary
 from .repository import PostRepository
-from fastapi import APIRouter, Depends, Path, HTTPException, Query
+from fastapi import APIRouter, Depends, Path, HTTPException, Query, File, UploadFile
 from app.core.security import oauth2_scheme, get_current_user
+import time
+import asyncio
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
-def get_fake_user() :
-    return {"username":"ricardo","rol":"admin"}
+@router.get("/sync")
+def sync_endpoint():
+    time.sleep(8)
+    return {"message": "Funcion sincrona terminada"}
 
-@router.get("/me") #Ejemplo inyeccion de dependencias =D
+
+@router.get("/async")
+async def async_endpoint():
+    await asyncio.sleep(8)  # Un await solo puede esperar funciones async
+    return {"message": "Funcion asincrona terminada"}
+
+
+def get_fake_user():
+    return {"username": "ricardo", "rol": "admin"}
+
+
+@router.get("/me")  # Ejemplo inyeccion de dependencias =D
 def read_me(user: dict = Depends(get_fake_user)):
-    return {"user":user}
+    return {"user": user}
+
 
 @router.get("", response_model=PaginatedPost)
 async def list_post(
@@ -75,14 +93,25 @@ async def retrieve_post(
 
 
 @router.post("", response_model=PostPublic, response_description="Post creado", status_code=status.HTTP_201_CREATED)
-async def create_post(post: PostCreate, db: Session = Depends(get_db), current = Depends(get_current_user)):
+async def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], # Annoted hace un form en swagger y obtiene sus datos el postcreate de la dependencia
+                      image: Optional[UploadFile] = File(None), db: Session = Depends(get_db),
+                      current=Depends(get_current_user)):
+
     repository = PostRepository(db)
 
+    save = None
+
     try:
+        if image is not None:
+            save = await save_image(image)
+
+        image_url = save["url"] if save else None
+
         post = repository.create_post(title=post.title,
                                       content=post.content,
                                       author=current,
-                                      tags=[tag.model_dump() for tag in post.tags])
+                                      tags=[tag.model_dump() for tag in post.tags],
+                                      image_url=image_url)
 
         db.commit()
         db.refresh(post)
@@ -97,7 +126,7 @@ async def create_post(post: PostCreate, db: Session = Depends(get_db), current =
 
 @router.put("/{post_id}", response_model=PostPublic, response_description="Post actualizado",
             response_model_exclude_none=True)
-async def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db), current = Depends(get_current_user)):
+async def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_db), current=Depends(get_current_user)):
     repository = PostRepository(db)
 
     post = repository.get(post_id)
@@ -118,7 +147,7 @@ async def update_post(post_id: int, data: PostUpdate, db: Session = Depends(get_
 
 
 @router.delete("{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(post_id: int, db: Session = Depends(get_db), current = Depends(get_current_user)):
+async def delete_post(post_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
     repository = PostRepository(db)
     post = repository.get(post_id)
 
@@ -134,14 +163,5 @@ async def delete_post(post_id: int, db: Session = Depends(get_db), current = Dep
 
 
 @router.get("/secure")
-def secure_endpoint(token : str = Depends(oauth2_scheme)):
-    return {"message":f"acceso con token", "token":f"f{token}"}
-
-
-
-
-
-
-
-
-
+def secure_endpoint(token: str = Depends(oauth2_scheme)):
+    return {"message": f"acceso con token", "token": f"f{token}"}
