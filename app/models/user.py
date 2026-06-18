@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, List
 from sqlalchemy import Integer, String, Enum, Boolean, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
 
 Role = Literal["user", "editor", "admin"]
@@ -17,3 +17,5 @@ class UserORM(Base):
     role: Mapped[Role] = mapped_column(Enum("user", "editor", "admin"), name="role_enum", default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow())
+    posts: Mapped[List["PostORM"]] = relationship(back_populates="user")
+

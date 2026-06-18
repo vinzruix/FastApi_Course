@@ -93,10 +93,10 @@ async def retrieve_post(
 
 
 @router.post("", response_model=PostPublic, response_description="Post creado", status_code=status.HTTP_201_CREATED)
-async def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], # Annoted hace un form en swagger y obtiene sus datos el postcreate de la dependencia
+async def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)],
+                      # Annoted hace un form en swagger y obtiene sus datos el postcreate de la dependencia
                       image: Optional[UploadFile] = File(None), db: Session = Depends(get_db),
                       current=Depends(get_current_user)):
-
     repository = PostRepository(db)
 
     save = None
@@ -109,7 +109,8 @@ async def create_post(post: Annotated[PostCreate, Depends(PostCreate.as_form)], 
 
         post = repository.create_post(title=post.title,
                                       content=post.content,
-                                      author=current,
+                                      user=current,
+                                      category_id=post.category_id,
                                       tags=[tag.model_dump() for tag in post.tags],
                                       image_url=image_url)
 
@@ -160,6 +161,24 @@ async def delete_post(post_id: int, db: Session = Depends(get_db), current=Depen
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=500, detail="error al eliminar")
+
+
+@router.delete("/post/{slug}", response_model=Union[PostPublic, PostSummary])
+async def get_by_slug(slug: str, db: Session = Depends(get_db),
+                      include_content: bool | None = Query(default=True,
+                                                           description="Indica si quiere el contenido del dict o no"),
+                      ):
+
+    repository = PostRepository(db)
+    post = repository.get_by_slug(slug=slug)
+
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if not include_content:
+        return PostPublic.model_validate(post, from_attributes=True)
+
+    return PostSummary.model_validate(post,from_attributes=True)
 
 
 @router.get("/secure")

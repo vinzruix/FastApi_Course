@@ -1,7 +1,9 @@
 from typing import Optional, List, Literal, Annotated
-
 from fastapi import Form
 from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
+
+from app.api.v1.auth.schemas import UserPublic
+from app.api.v1.categories.schemas import CategoryPublic
 
 
 class Tag(BaseModel):
@@ -15,13 +17,6 @@ class Tag(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class Author(BaseModel):
-    name: str = Field(..., min_length=3, max_length=30, description="Nombre del autor")
-    email: EmailStr = Field(..., description="Email del autor")
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 # Esto es pydantic
 # Se hace varias clases pues pemirte mayor modificacion
 class PostBase(BaseModel):
@@ -29,7 +24,8 @@ class PostBase(BaseModel):
     content: str
     image_url: Optional[str] = None
     tags: Optional[List[Tag]] = Field(default_factory=list)  # Crea una lista por cada objeto que se cree en el programa
-    author: Optional[Author] = None
+    user: Optional[UserPublic] = None
+    category : Optional[CategoryPublic] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -50,8 +46,9 @@ class PostCreate(BaseModel):
     )
 
     tags: Optional[List[Tag]] = Field(default_factory=list)
+    category_id : Optional[int] = None
 
-    # author: Author
+
 
     @field_validator("title")
     @classmethod
@@ -64,15 +61,17 @@ class PostCreate(BaseModel):
     def as_form(cls,
                 title: Annotated[str, Form(min_length=3)],
                 content: Annotated[str, Form(min_length=10)],
-                tags : Annotated[Optional[List[str]], Form()] = None
+                tags : Annotated[Optional[List[str]], Form()] = None,
+                category_id : Annotated[int, Form(ge=1)] = None,
                 ):
 
         tag_obj = [Tag(name=tag) for tag in (tags or [])]
-        return cls(title=title,tags=tag_obj,content=content)
+        return cls(title=title,tags=tag_obj,content=content, category_id=category_id)
 
 
 class PostPublic(PostBase):
     id: int
+    slug : str
 
     model_config = ConfigDict(from_attributes=True)
 

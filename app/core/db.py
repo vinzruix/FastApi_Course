@@ -13,7 +13,7 @@ engine_kwargs = {}
 if DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, echo=True, future=True,
+engine = create_engine(DATABASE_URL, echo=False, future=True,
                        **engine_kwargs)  # Future significa usar la version nueva de sqlalchemy
 session_local = sessionmaker(bind=engine, autoflush=False,
                              class_=Session)  # AutoFlush, hace que no se hagan los cambios hasta hacer el commit
