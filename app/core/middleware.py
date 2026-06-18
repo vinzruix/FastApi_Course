@@ -11,7 +11,7 @@ def register_middleware(app:FastAPI):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentias=True,
+        allow_credentilas=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
